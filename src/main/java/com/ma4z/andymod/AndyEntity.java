@@ -17,7 +17,7 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 
 public class AndyEntity extends PathfinderMob implements GeoEntity {
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
-    private static final RawAnimation WALK_ANIM = RawAnimation.begin().thenLoop("animation.model.walk");
+    private static final RawAnimation WALK_ANIM = RawAnimation.begin().thenLoop("walking");
 
     public AndyEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
