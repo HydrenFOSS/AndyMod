@@ -1,0 +1,29 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+issueTrackerURL=""
+
+[[mods]]
+modId="andymod"
+version="${file.jarVersion}"
+displayName="Andy Mod"
+displayURL="https://ma4z.pages.dev"
+credits="thanks to gwidoniusz99 for creating the animations"
+authors="ma4z"
+description='''
+a dude who like u
+'''
+
+[[dependencies.andymod]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.andymod]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1]"
+ordering="NONE"
+side="BOTH"
