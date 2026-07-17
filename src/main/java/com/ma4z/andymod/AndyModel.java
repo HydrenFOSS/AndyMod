@@ -16,6 +16,6 @@ public class AndyModel extends GeoModel<AndyEntity> {
 
     @Override
     public ResourceLocation getAnimationResource(AndyEntity animatable) {
-        return new ResourceLocation(AndyMod.MODID, "animations/walking-animation.json");
+        return new ResourceLocation(AndyMod.MODID, "animations/andy-animation.json");
     }
 }
