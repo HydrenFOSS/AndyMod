@@ -17,8 +17,6 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 
 public class AndyEntity extends PathfinderMob implements GeoEntity {
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
-
-    // Matches the filename string of your wallking-animation.json entry inside Blockbench
     private static final RawAnimation WALK_ANIM = RawAnimation.begin().thenLoop("animation.model.walk");
 
     public AndyEntity(EntityType<? extends PathfinderMob> type, Level level) {
