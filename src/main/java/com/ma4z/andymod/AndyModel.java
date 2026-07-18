@@ -4,18 +4,36 @@ import net.minecraft.resources.ResourceLocation;
 import software.bernie.geckolib.model.GeoModel;
 
 public class AndyModel extends GeoModel<AndyEntity> {
+    
+    // geometry Resources
+    private static final ResourceLocation DEFAULT_MODEL = new ResourceLocation(AndyMod.MODID, "geo/andyskin.geo.json");
+    private static final ResourceLocation EATING_MODEL = new ResourceLocation(AndyMod.MODID, "geo/eating.geo.json");
+    
+    // texture Resources
+    private static final ResourceLocation DEFAULT_TEXTURE = new ResourceLocation(AndyMod.MODID, "textures/entity/andyskin.png");
+    private static final ResourceLocation EATING_TEXTURE = new ResourceLocation(AndyMod.MODID, "textures/entity/andy-eating.png");
+    
+    // animation Resource
+    private static final ResourceLocation ANIMATION_RESOURCE = new ResourceLocation(AndyMod.MODID, "animations/andy-animation.json");
+
     @Override
     public ResourceLocation getModelResource(AndyEntity animatable) {
-        return new ResourceLocation(AndyMod.MODID, "geo/andyskin.geo.json");
+        if (animatable.isEating()) {
+            return EATING_MODEL;
+        }
+        return DEFAULT_MODEL;
     }
 
     @Override
     public ResourceLocation getTextureResource(AndyEntity animatable) {
-        return new ResourceLocation(AndyMod.MODID, "textures/entity/andyskin.png");
+        if (animatable.isEating()) {
+            return EATING_TEXTURE;
+        }
+        return DEFAULT_TEXTURE;
     }
 
     @Override
     public ResourceLocation getAnimationResource(AndyEntity animatable) {
-        return new ResourceLocation(AndyMod.MODID, "animations/andy-animation.json");
+        return ANIMATION_RESOURCE;
     }
 }

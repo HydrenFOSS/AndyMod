@@ -5,15 +5,14 @@ issueTrackerURL=""
 
 [[mods]]
 modId="andymod"
-version="${file.jarVersion}"
+version="1.0.0"
 displayName="Andy Mod"
 displayURL="https://ma4z.pages.dev"
-credits="thanks to gwidoniusz99 for creating the animations"
-authors="ma4z"
+credits="gwidoniusz99, ma4z"
+authors="ma4z, gwidoniusz99"
 description='''
 a dude who like u
 '''
-
 [[dependencies.andymod]]
 modId="forge"
 mandatory=true
@@ -25,5 +24,12 @@ side="BOTH"
 modId="minecraft"
 mandatory=true
 versionRange="[1.20.1]"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.andymod]]
+modId="geckolib"
+mandatory=true
+versionRange="[4.0.0,)"
 ordering="NONE"
 side="BOTH"
