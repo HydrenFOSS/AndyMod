@@ -5,7 +5,8 @@ issueTrackerURL=""
 
 [[mods]]
 modId="andymod"
-version="1.0.0"
+version="1.0.1"
+logoFile="logo.png"
 displayName="Andy Mod"
 displayURL="https://ma4z.pages.dev"
 credits="gwidoniusz99, ma4z"
