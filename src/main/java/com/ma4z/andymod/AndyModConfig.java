@@ -19,7 +19,7 @@ public class AndyModConfig {
         enabled = BUILDER.define("enabled", true);
         provider = BUILDER.define("provider", "groq");
         apiKey = BUILDER.define("apiKey", "");
-        model = BUILDER.define("model", "meta-llama/llama-4-scout");
+        model = BUILDER.define("model", "llama-3.1-8b-instant");
         temperature = BUILDER.defineInRange("temperature", 0.7, 0.0, 2.0);
         maxTokens = BUILDER.defineInRange("maxTokens", 512, 1, 4096);
         timeout = BUILDER.defineInRange("timeout", 30, 1, 120);
