@@ -2,6 +2,8 @@ package com.ma4z.andymod;
 
 import com.ma4z.andymod.ai.AIAgent;
 import com.ma4z.andymod.ai.VisualContext;
+import com.ma4z.andymod.network.NeckWringPacket;
+import com.ma4z.andymod.network.ModMessages;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -11,7 +13,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -42,10 +46,14 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
     private static final EntityDataAccessor<Boolean> IS_EATING = SynchedEntityData.defineId(AndyEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> IS_SECRET = SynchedEntityData.defineId(AndyEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> MOOD = SynchedEntityData.defineId(AndyEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> IS_CHASING = SynchedEntityData.defineId(AndyEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> IS_WRINGING = SynchedEntityData.defineId(AndyEntity.class, EntityDataSerializers.BOOLEAN);
     
     private static final RawAnimation WALK_ANIM = RawAnimation.begin().thenLoop("walking");
     private static final RawAnimation EATING_ANIM = RawAnimation.begin().thenLoop("eating");
     private static final RawAnimation SECRET_ANIM = RawAnimation.begin().thenLoop("secret");
+    private static final RawAnimation CHASING_ANIM = RawAnimation.begin().thenLoop("chasing");
+    private static final RawAnimation WRING_ANIM = RawAnimation.begin().thenPlay("neck_wring");
 
     private int fireAlertCooldown = 0;
     public boolean isAIRequestPending = false;
@@ -53,10 +61,14 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
     private final List<String> chatHistory = new ArrayList<>();
     private static final int MAX_HISTORY_SIZE = 6;
 
+    private Player chaseTarget;
+    private int chaseTimer = 0;
+    private int wringTimer = 0;
+
     public AndyEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
         this.setCustomName(Component.literal("Andy"));
-        this.setCustomNameVisible(!this.isEating());
+        this.setCustomNameVisible(true);
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -71,6 +83,8 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
         this.entityData.define(IS_EATING, false);
         this.entityData.define(IS_SECRET, false);
         this.entityData.define(MOOD, 100);
+        this.entityData.define(IS_CHASING, false);
+        this.entityData.define(IS_WRINGING, false);
     }
 
     public boolean isEating() {
@@ -99,8 +113,28 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
         this.entityData.set(MOOD, clamped);
     }
 
+    public boolean isChasing() {
+        return this.entityData.get(IS_CHASING);
+    }
+
+    public void setChasing(boolean chasing) {
+        this.entityData.set(IS_CHASING, chasing);
+    }
+
+    public boolean isWringing() {
+        return this.entityData.get(IS_WRINGING);
+    }
+
+    public void setWringing(boolean wringing) {
+        this.entityData.set(IS_WRINGING, wringing);
+    }
+
     public boolean isAngry() {
         return this.getMood() < 30;
+    }
+
+    public boolean shouldShowMoodBar() {
+        return !this.isEating() && !this.isChasing() && !this.isWringing();
     }
 
     public void addLogToHistory(String sender, String text) {
@@ -119,20 +153,27 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
 
     @Override
     public boolean isImmobile() {
-        return this.isEating() || super.isImmobile();
+        return this.isEating() || this.isWringing() || super.isImmobile();
     }
 
     @Override
     public boolean shouldShowName() {
-        return !this.isEating() && super.shouldShowName();
+        return !this.isEating() && !this.isChasing() && !this.isWringing() && super.shouldShowName();
     }
 
     @Override
     public boolean isInvulnerableTo(DamageSource source) {
-        if (this.isEating()) {
+        if (this.isEating() || this.isChasing() || this.isWringing()) {
             return true;
         }
         return super.isInvulnerableTo(source);
+    }
+
+    private void playDisappearEffects() {
+        this.level().playSound(null, this.getX(), this.getY(), this.getZ(), net.minecraft.sounds.SoundEvents.WARDEN_HEARTBEAT, net.minecraft.sounds.SoundSource.HOSTILE, 1.0F, 1.0F);
+        if (this.level() instanceof ServerLevel serverLevel) {
+            serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE, this.getX(), this.getY() + 1.0D, this.getZ(), 25, 0.3D, 0.6D, 0.3D, 0.03D);
+        }
     }
 
     @Override
@@ -140,6 +181,59 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
         super.tick();
 
         if (!this.level().isClientSide()) {
+            if (this.isChasing() && !this.isWringing()) {
+                if (chaseTarget == null) {
+                    List<Player> validTargets = this.level().getEntitiesOfClass(Player.class, this.getBoundingBox().inflate(50.0D));
+                    for (Player p : validTargets) {
+                        if (!p.isCreative() && !p.isSpectator() && p.isAlive()) {
+                            chaseTarget = p;
+                            break;
+                        }
+                    }
+                }
+
+                chaseTimer++;
+                if (chaseTimer > 600 || chaseTarget == null || !chaseTarget.isAlive()) {
+                    playDisappearEffects();
+                    this.discard();
+                    return;
+                }
+
+                chaseTarget.displayClientMessage(Component.literal("RUN... DO NOT HIDE !!!").withStyle(net.minecraft.ChatFormatting.RED, net.minecraft.ChatFormatting.BOLD), true);
+                this.getNavigation().moveTo(chaseTarget, 1.75D);
+
+                if (this.distanceToSqr(chaseTarget) <= 4.0D) {
+                    this.setChasing(false);
+                    this.setWringing(true);
+                    this.getNavigation().stop();
+                    wringTimer = 0;
+                }
+            }
+
+            if (this.isWringing()) {
+                wringTimer++;
+                
+                if (chaseTarget instanceof ServerPlayer serverPlayer && serverPlayer.isAlive()) {
+                    this.getLookControl().setLookAt(serverPlayer, 30.0F, 30.0F);
+                    
+                    double lookAngle = Math.toRadians(this.getYRot());
+                    double targetX = this.getX() - Math.sin(lookAngle) * 1.2D;
+                    double targetZ = this.getZ() + Math.cos(lookAngle) * 1.2D;
+                    serverPlayer.teleportTo(targetX, this.getY(), targetZ);
+                    ModMessages.sendToPlayer(new NeckWringPacket(wringTimer), serverPlayer);
+                }
+
+                if (wringTimer >= 40) {
+                   if (chaseTarget instanceof ServerPlayer serverPlayer && serverPlayer.isAlive()) {
+                      DamageSource mobDamage = this.damageSources().mobAttack(this);
+                      serverPlayer.hurt(mobDamage, 9_000_000_000_000_000_000_000.0F);
+                   }
+                   playDisappearEffects();
+                   this.discard();
+                   return;
+                }
+            }
+
             if (this.isOnFire()) {
                 handleBurningAlert();
                 if (this.tickCount % 20 == 0) {
@@ -157,10 +251,7 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
                 List<Player> nearbyPlayers = this.level().getEntitiesOfClass(Player.class, this.getBoundingBox().inflate(8.0D));
                 for (Player player : nearbyPlayers) {
                     if (!player.isCreative() && !player.isSpectator()) {
-                        this.level().playSound(null, this.getX(), this.getY(), this.getZ(), net.minecraft.sounds.SoundEvents.WARDEN_HEARTBEAT, net.minecraft.sounds.SoundSource.HOSTILE, 1.0F, 1.0F);
-                        if (this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
-                            serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE, this.getX(), this.getY() + 1.0D, this.getZ(), 25, 0.3D, 0.6D, 0.3D, 0.03D);
-                        }
+                        playDisappearEffects();
                         this.discard();
                         break;
                     }
@@ -184,15 +275,24 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
                 }
 
                 Player targetPlayer = nearbyPlayers.get(this.random.nextInt(nearbyPlayers.size()));
+                float chance = this.random.nextFloat();
 
-                java.util.concurrent.Executors.newSingleThreadScheduledExecutor().schedule(() -> {
-                    this.level().getServer().execute(() -> {
-                        broadcastToNearbyPlayers("Im never gonna let you have peace");
-                        if (this.random.nextFloat() < 0.40F) {
-                            spawnStalkerAndy(targetPlayer);
-                        }
-                    });
-                }, 4, java.util.concurrent.TimeUnit.SECONDS);
+                if (chance < 0.005F) {
+                    java.util.concurrent.Executors.newSingleThreadScheduledExecutor().schedule(() -> {
+                        this.level().getServer().execute(() -> {
+                            spawnChasingAndy(targetPlayer);
+                        });
+                    }, 2, java.util.concurrent.TimeUnit.SECONDS);
+                } else {
+                    java.util.concurrent.Executors.newSingleThreadScheduledExecutor().schedule(() -> {
+                        this.level().getServer().execute(() -> {
+                            broadcastToNearbyPlayers("Im never gonna let you have peace");
+                            if (this.random.nextFloat() < 0.40F) {
+                                spawnStalkerAndy(targetPlayer);
+                            }
+                        });
+                    }, 15, java.util.concurrent.TimeUnit.SECONDS);
+                }
             }
         }
     }
@@ -210,6 +310,23 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
         stalkerAndy.moveTo(floorPos.getX() + 0.5D, floorPos.getY(), floorPos.getZ() + 0.5D, this.random.nextFloat() * 360.0F, 0.0F);
         stalkerAndy.setEating(true);
         this.level().addFreshEntity(stalkerAndy);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void spawnChasingAndy(Player player) {
+        double angle = this.random.nextDouble() * Math.PI * 2.0D;
+        double spawnX = player.getX() + Math.cos(angle) * 15.0D;
+        double spawnZ = player.getZ() + Math.sin(angle) * 15.0D;
+
+        BlockPos basePos = BlockPos.containing(spawnX, player.getY(), spawnZ);
+        BlockPos floorPos = this.level().getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, basePos);
+
+        AndyEntity chasingAndy = new AndyEntity((EntityType<? extends AndyEntity>) this.getType(), this.level());
+        chasingAndy.moveTo(floorPos.getX() + 0.5D, floorPos.getY(), floorPos.getZ() + 0.5D, this.random.nextFloat() * 360.0F, 0.0F);
+        chasingAndy.setChasing(true);
+        chasingAndy.chaseTarget = player;
+        chasingAndy.chaseTimer = 0;
+        this.level().addFreshEntity(chasingAndy);
     }
 
     private void handleBurningAlert() {
@@ -258,8 +375,8 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
             return;
         }
 
-        Block targetBlock = BuiltInRegistries.BLOCK.get(new net.minecraft.resources.ResourceLocation(blockName));
-        if (targetBlock == Blocks.AIR) {
+        Block targetBlock = BuiltInRegistries.BLOCK.get(ResourceLocation.tryParse(blockName));
+        if (targetBlock == null || targetBlock == Blocks.AIR) {
             broadcastToNearbyPlayers("wth is a " + blockName + " lol cant find it");
             return;
         }
@@ -315,6 +432,12 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         controllers.add(new AnimationController<>(this, "controller", 5, event -> {
+            if (this.isWringing()) {
+                return event.setAndContinue(WRING_ANIM);
+            }
+            if (this.isChasing()) {
+                return event.setAndContinue(CHASING_ANIM);
+            }
             if (this.isSecretActive()) {
                 return event.setAndContinue(SECRET_ANIM);
             }
@@ -339,6 +462,8 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
         compound.putBoolean("IsEating", this.isEating());
         compound.putBoolean("IsSecret", this.isSecretActive());
         compound.putInt("AndyMood", this.getMood());
+        compound.putBoolean("IsChasing", this.isChasing());
+        compound.putBoolean("IsWringing", this.isWringing());
 
         ListTag historyList = new ListTag();
         for (String line : this.chatHistory) {
@@ -358,6 +483,12 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
         }
         if (compound.contains("AndyMood")) {
             this.setMood(compound.getInt("AndyMood"));
+        }
+        if (compound.contains("IsChasing")) {
+            this.setChasing(compound.getBoolean("IsChasing"));
+        }
+        if (compound.contains("IsWringing")) {
+            this.setWringing(compound.getBoolean("IsWringing"));
         }
         if (compound.contains("ChatHistory", 9)) {
             this.chatHistory.clear();
@@ -379,6 +510,9 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
 
         @Override
         public boolean canUse() {
+            if (this.andy.isChasing() || this.andy.isWringing() || this.andy.isEating()) {
+                return false;
+            }
             if (this.lookCooldown > 0) {
                 this.lookCooldown--;
                 return false;
@@ -427,6 +561,7 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
 
         @Override
         public boolean canUse() {
+            if (this.andy.isChasing() || this.andy.isWringing() || this.andy.isEating()) return false;
             List<Player> players = this.andy.level().getEntitiesOfClass(Player.class, this.andy.getBoundingBox().inflate(this.maxDistance));
             if (players.isEmpty()) return false;
             this.followingPlayer = players.get(0);
@@ -435,6 +570,7 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
 
         @Override
         public boolean canContinueToUse() {
+            if (this.andy.isChasing() || this.andy.isWringing() || this.andy.isEating()) return false;
             return this.followingPlayer != null && this.followingPlayer.isAlive() && this.andy.distanceToSqr(this.followingPlayer) > (this.minDistance * this.minDistance);
         }
 
@@ -468,6 +604,7 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
 
         @Override
         public boolean canUse() {
+            if (this.andy.isChasing() || this.andy.isWringing() || this.andy.isEating()) return false;
             List<Player> players = this.andy.level().getEntitiesOfClass(Player.class, this.andy.getBoundingBox().inflate(40.0D));
             if (players.isEmpty()) return false;
             Player closest = players.get(0);

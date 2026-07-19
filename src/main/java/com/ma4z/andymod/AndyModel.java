@@ -5,15 +5,13 @@ import software.bernie.geckolib.model.GeoModel;
 
 public class AndyModel extends GeoModel<AndyEntity> {
     
-    // geometry Resources
     private static final ResourceLocation DEFAULT_MODEL = new ResourceLocation(AndyMod.MODID, "geo/andyskin.geo.json");
     private static final ResourceLocation EATING_MODEL = new ResourceLocation(AndyMod.MODID, "geo/eating.geo.json");
     
-    // texture Resources
     private static final ResourceLocation DEFAULT_TEXTURE = new ResourceLocation(AndyMod.MODID, "textures/entity/andyskin.png");
     private static final ResourceLocation EATING_TEXTURE = new ResourceLocation(AndyMod.MODID, "textures/entity/andy-eating.png");
+    private static final ResourceLocation SCARY_TEXTURE = new ResourceLocation(AndyMod.MODID, "textures/entity/andy-scary.png");
     
-    // animation Resource
     private static final ResourceLocation ANIMATION_RESOURCE = new ResourceLocation(AndyMod.MODID, "animations/andy-animation.json");
 
     @Override
@@ -26,6 +24,9 @@ public class AndyModel extends GeoModel<AndyEntity> {
 
     @Override
     public ResourceLocation getTextureResource(AndyEntity animatable) {
+        if (animatable.isWringing() || animatable.isChasing()) {
+            return SCARY_TEXTURE;
+        }
         if (animatable.isEating()) {
             return EATING_TEXTURE;
         }

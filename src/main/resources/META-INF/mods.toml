@@ -5,14 +5,14 @@ issueTrackerURL=""
 
 [[mods]]
 modId="andymod"
-version="1.0.1"
+version="1.0.2"
 logoFile="logo.png"
 displayName="Andy Mod"
 displayURL="https://ma4z.pages.dev"
 credits="gwidoniusz99, ma4z"
 authors="ma4z, gwidoniusz99"
 description='''
-a dude who like u
+Andy is a person who just wants to play with you. He seems like a perfectly fine helper at first, but as the days progress, he starts to get corrupted...
 '''
 [[dependencies.andymod]]
 modId="forge"

@@ -22,6 +22,8 @@ public class AndyMoodHudOverlay {
         if (andies.isEmpty()) return;
 
         AndyEntity andy = andies.get(0);
+        if (!andy.shouldShowMoodBar()) return;
+
         int mood = andy.getMood();
 
         int barWidth = 6;
