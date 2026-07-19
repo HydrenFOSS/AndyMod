@@ -24,31 +24,44 @@ public class AndyMoodHudOverlay {
         AndyEntity andy = andies.get(0);
         int mood = andy.getMood();
 
-        int barWidth = 12;
+        int barWidth = 6;
         int barHeight = 80;
-        int x = width - barWidth - 15;
+        int x = width - barWidth - 20;
         int y = (height / 2) - (barHeight / 2);
 
-        guiGraphics.fill(x - 1, y - 1, x + barWidth + 1, y + barHeight + 1, 0xFF000000);
+        drawRoundedRect(guiGraphics, x - 1, y - 1, x + barWidth + 1, y + barHeight + 1, 0xFF000000);
 
-        int fillColor = 0xFF00FF00;
-        if (mood < 30) {
-            fillColor = 0xFFFF0000;
-        } else if (mood < 60) {
+        int fillColor;
+        if (mood >= 80) {
+            fillColor = 0xFF55FF55;
+        } else if (mood >= 60) {
+            fillColor = 0xFF22AA22;
+        } else if (mood >= 40) {
             fillColor = 0xFFFFD700;
+        } else if (mood >= 20) {
+            fillColor = 0xFFFF8C00;
+        } else {
+            fillColor = 0xFFFF2222;
         }
 
         int scaledHeight = (int) (barHeight * (mood / 100.0F));
-        int fillY = y + barHeight - scaledHeight;
-        guiGraphics.fill(x, fillY, x + barWidth, y + barHeight, fillColor);
+        if (scaledHeight > 0) {
+            int fillY = y + barHeight - scaledHeight;
+            drawRoundedRect(guiGraphics, x, fillY, x + barWidth, y + barHeight, fillColor);
+        }
 
-        int logoSize = 20;
+        int logoSize = 16;
         int logoX = x - ((logoSize - barWidth) / 2);
-        int logoY = y - logoSize - 4;
+        int logoY = y - logoSize - 6;
 
         RenderSystem.setShaderTexture(0, LOGO_TEXTURE);
         RenderSystem.enableBlend();
         guiGraphics.blit(LOGO_TEXTURE, logoX, logoY, 0, 0, logoSize, logoSize, logoSize, logoSize);
         RenderSystem.disableBlend();
     };
+
+    private static void drawRoundedRect(GuiGraphics graphics, int left, int top, int right, int bottom, int color) {
+        graphics.fill(left + 1, top, right - 1, bottom, color);
+        graphics.fill(left, top + 1, right, bottom - 1, color);
+    }
 }

@@ -220,13 +220,7 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
             double rand = this.random.nextDouble();
             String appendDuh = (rand < 0.0005) ? " start your text response explicitly with the word 'duh'." : " do NOT use the word 'duh'.";
 
-            String prompt = "You are Andy, a helpful but laid-back Gen-Z character in Minecraft who talks in lowercase text messages. "
-                    + "CRITICAL CONTEXT: You are literally ON FIRE and taking burning damage right now! "
-                    + "Your exact current positions are coordinates: X=" + this.getBlockX() + ", Y=" + this.getBlockY() + ", Z=" + this.getBlockZ() + " "
-                    + "Instructions: Express panic or complain about the heat out loud to players. "
-                    + "Style: Keep it extremely short (under 12 words), use abbreviations, slang, minimal punctuation, and no capitalization. "
-                    + "Recent dialogue log for context:\n" + getFormattedHistory() + "\n"
-                    + "Random condition fulfilled:" + appendDuh;
+            String prompt = AndyPrompt.getPromptForMood(this.getMood(), "players", this.getBlockX(), this.getBlockY(), this.getBlockZ(), getFormattedHistory(), appendDuh, "ON FIRE AND BURNING");
             
             AIAgent.sendPromptAsync(prompt).thenAccept(response -> {
                 this.level().getServer().execute(() -> {
@@ -237,21 +231,25 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
         }
     }
 
-    public void handlePlayerCommand(Player player, String message) {
+    public boolean handlePlayerCommand(Player player, String message) {
         String msg = message.toLowerCase().trim();
         if (msg.contains("follow me")) {
             this.setMood(this.getMood() + 5);
             broadcastToNearbyPlayers("bet im following u now let's go");
+            return true;
         } else if (msg.contains("help me")) {
             this.setMood(this.getMood() + 10);
             broadcastToNearbyPlayers("i got u what do u need help with");
+            return true;
         } else if (msg.contains("where is the closest")) {
             String parts[] = msg.split("where is the closest");
             if (parts.length > 1) {
                 String blockQuery = parts[1].replace("?", "").trim().replace(" ", "_");
                 findClosestBlock(blockQuery);
+                return true;
             }
         }
+        return false;
     }
 
     private void findClosestBlock(String blockName) {
@@ -295,10 +293,11 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
     }
 
     public void broadcastToNearbyPlayers(String message) {
-        addLogToHistory("Andy", message);
+        String cleanMessage = message.replaceAll("(?i)^<Andy>\\s*", "");
+        addLogToHistory("Andy", cleanMessage);
         List<Player> nearbyPlayers = this.level().getEntitiesOfClass(Player.class, this.getBoundingBox().inflate(30.0D));
         for (Player player : nearbyPlayers) {
-            player.sendSystemMessage(Component.literal("<Andy> " + message));
+            player.sendSystemMessage(Component.literal("<Andy> " + cleanMessage));
         }
     }
 
@@ -399,13 +398,7 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
             double rand = this.andy.getRandom().nextDouble();
             String appendDuh = (rand < 0.0005) ? " start your text response explicitly with the word 'duh'." : " do NOT use the word 'duh'.";
 
-            String prompt = "You are Andy, a helpful but laid-back Gen-Z entity in Minecraft. You talk like you are texting on Discord. "
-                    + "Your exact current positions are coordinates: X=" + this.andy.getBlockX() + ", Y=" + this.andy.getBlockY() + ", Z=" + this.andy.getBlockZ() + " "
-                    + "Current environment line: " + visualContext + ". "
-                    + "Instructions: Joke nicely or comment on this thing you see right now to players nearby. Keep your tone friendly, relaxed, or slang-heavy. Always be willing to assist the player if they asked you to do something. "
-                    + "Style: Answers must be extremely short (under 15 words), purely lowercase, use shortcuts like 'wbu', 'rn', 'bruh', 'im fine', 'u doin'. Do not use robotic paragraphs or capitalization. "
-                    + "Recent dialogue log for context:\n" + this.andy.getFormattedHistory() + "\n"
-                    + "Random condition fulfilled:" + appendDuh;
+            String prompt = AndyPrompt.getPromptForMood(this.andy.getMood(), "players", this.andy.getBlockX(), this.andy.getBlockY(), this.andy.getBlockZ(), this.andy.getFormattedHistory(), appendDuh, visualContext);
 
             AIAgent.sendPromptAsync(prompt).thenAccept(response -> {
                 this.andy.level().getServer().execute(() -> {
