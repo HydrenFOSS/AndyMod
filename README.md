@@ -20,12 +20,12 @@ To bring Andy into your world, you must build a specific ritual structure:
 
 AndyMod requires an API key from an AI provider to function. Supported providers include **OpenAI**, **Gemini**, and **Groq** (Groq is highly recommended for the best experience).
 
-### Client-Side Setup
+### Client/Server Side Setup
 
 If you are playing on the client side, you must add your API key to your local configuration file.
 
-1. Navigate to your Minecraft directory.
-2. Open `.minecraft/config/andymod-common.toml` in a text editor.
+1. Navigate to your Minecraft/Server directory.
+2. Open `config/andymod-common.toml` in a text editor.
 3. Insert your key and provider details
 
 ---

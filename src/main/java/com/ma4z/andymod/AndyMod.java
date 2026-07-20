@@ -2,6 +2,7 @@ package com.ma4z.andymod;
 
 import com.ma4z.andymod.config.AndyModConfig;
 import com.ma4z.andymod.network.ModMessages;
+import com.ma4z.andymod.sound.AndySounds;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -24,6 +25,8 @@ public class AndyMod {
         
         GeckoLib.initialize();
         ModEntities.register(modEventBus);
+        AndySounds.register(modEventBus);
+        
         modEventBus.addListener(this::commonSetup);
         
         modEventBus.addListener(this::registerAttributes);

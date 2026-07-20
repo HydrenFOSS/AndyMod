@@ -4,6 +4,7 @@ import com.ma4z.andymod.ai.AIAgent;
 import com.ma4z.andymod.ai.VisualContext;
 import com.ma4z.andymod.network.NeckWringPacket;
 import com.ma4z.andymod.network.ModMessages;
+import com.ma4z.andymod.sound.AndySounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -16,6 +17,7 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -48,6 +50,7 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
     private static final EntityDataAccessor<Integer> MOOD = SynchedEntityData.defineId(AndyEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> IS_CHASING = SynchedEntityData.defineId(AndyEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> IS_WRINGING = SynchedEntityData.defineId(AndyEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> IS_DEVELOPER_TEST = SynchedEntityData.defineId(AndyEntity.class, EntityDataSerializers.BOOLEAN);
     
     private static final RawAnimation WALK_ANIM = RawAnimation.begin().thenLoop("walking");
     private static final RawAnimation EATING_ANIM = RawAnimation.begin().thenLoop("eating");
@@ -64,6 +67,7 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
     private Player chaseTarget;
     private int chaseTimer = 0;
     private int wringTimer = 0;
+    private int caveSoundTimer = 0;
 
     public AndyEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -85,6 +89,7 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
         this.entityData.define(MOOD, 100);
         this.entityData.define(IS_CHASING, false);
         this.entityData.define(IS_WRINGING, false);
+        this.entityData.define(IS_DEVELOPER_TEST, false);
     }
 
     public boolean isEating() {
@@ -129,12 +134,24 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
         this.entityData.set(IS_WRINGING, wringing);
     }
 
+    public boolean isDeveloperTest() {
+        return this.entityData.get(IS_DEVELOPER_TEST);
+    }
+
+    public void setDeveloperTest(boolean developerTest) {
+        this.entityData.set(IS_DEVELOPER_TEST, developerTest);
+    }
+
     public boolean isAngry() {
         return this.getMood() < 30;
     }
 
     public boolean shouldShowMoodBar() {
         return !this.isEating() && !this.isChasing() && !this.isWringing();
+    }
+
+    public int getWorldDay() {
+        return (int) (this.level().getDayTime() / 24000L) + 1;
     }
 
     public void addLogToHistory(String sender, String text) {
@@ -176,11 +193,53 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
         }
     }
 
+    public boolean isUndergroundInOverworld() {
+        Level currentLevel = this.level();
+        if (currentLevel.dimension() != Level.OVERWORLD) {
+            return false;
+        }
+        BlockPos pos = this.blockPosition();
+        boolean hasNoDirectSky = !currentLevel.canSeeSky(pos);
+        boolean isBelowSurface = pos.getY() < currentLevel.getSeaLevel();
+        return hasNoDirectSky && isBelowSurface;
+    }
+
+    public void triggerCaveSound() { 
+        if (AndySounds.ANDY_CAVE_SOUND.isPresent()) {
+            this.level().playSound(
+                null,
+                this.getX(),
+                this.getY(),
+                this.getZ(),
+                AndySounds.ANDY_CAVE_SOUND.get(),
+                net.minecraft.sounds.SoundSource.HOSTILE,
+                1.0F,
+                1.0F
+            );
+        }
+    }
+
+    private void handleCaveSoundTick() {
+        if (this.isUndergroundInOverworld()) {
+            this.caveSoundTimer++;
+            if (this.caveSoundTimer >= 300) { 
+                this.caveSoundTimer = 0;
+                if (this.random.nextFloat() < 0.30F) {
+                    triggerCaveSound();
+                }
+            }
+        } else {
+            this.caveSoundTimer = 0;
+        }
+    }
+
     @Override
     public void tick() {
         super.tick();
 
         if (!this.level().isClientSide()) {
+            handleCaveSoundTick();
+
             if (this.isChasing() && !this.isWringing()) {
                 if (chaseTarget == null) {
                     List<Player> validTargets = this.level().getEntitiesOfClass(Player.class, this.getBoundingBox().inflate(50.0D));
@@ -337,7 +396,7 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
             double rand = this.random.nextDouble();
             String appendDuh = (rand < 0.0005) ? " start your text response explicitly with the word 'duh'." : " do NOT use the word 'duh'.";
 
-            String prompt = AndyPrompt.getPromptForMood(this.getMood(), "players", this.getBlockX(), this.getBlockY(), this.getBlockZ(), getFormattedHistory(), appendDuh, "ON FIRE AND BURNING");
+            String prompt = AndyPrompt.getPromptForMood(this.getMood(), this.getWorldDay(), "players", this.getBlockX(), this.getBlockY(), this.getBlockZ(), getFormattedHistory(), appendDuh, "ON FIRE AND BURNING");
             
             AIAgent.sendPromptAsync(prompt).thenAccept(response -> {
                 this.level().getServer().execute(() -> {
@@ -350,7 +409,11 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
 
     public boolean handlePlayerCommand(Player player, String message) {
         String msg = message.toLowerCase().trim();
-        if (msg.contains("follow me")) {
+        if (msg.contains("play cave sound test")) {
+            triggerCaveSound();
+            broadcastToNearbyPlayers("playing cave sound test");
+            return true;
+        } else if (msg.contains("follow me")) {
             this.setMood(this.getMood() + 5);
             broadcastToNearbyPlayers("bet im following u now let's go");
             return true;
@@ -464,6 +527,7 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
         compound.putInt("AndyMood", this.getMood());
         compound.putBoolean("IsChasing", this.isChasing());
         compound.putBoolean("IsWringing", this.isWringing());
+        compound.putBoolean("IsDeveloperTest", this.isDeveloperTest());
 
         ListTag historyList = new ListTag();
         for (String line : this.chatHistory) {
@@ -489,6 +553,9 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
         }
         if (compound.contains("IsWringing")) {
             this.setWringing(compound.getBoolean("IsWringing"));
+        }
+        if (compound.contains("IsDeveloperTest")) {
+            this.setDeveloperTest(compound.getBoolean("IsDeveloperTest"));
         }
         if (compound.contains("ChatHistory", 9)) {
             this.chatHistory.clear();
@@ -532,7 +599,7 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
             double rand = this.andy.getRandom().nextDouble();
             String appendDuh = (rand < 0.0005) ? " start your text response explicitly with the word 'duh'." : " do NOT use the word 'duh'.";
 
-            String prompt = AndyPrompt.getPromptForMood(this.andy.getMood(), "players", this.andy.getBlockX(), this.andy.getBlockY(), this.andy.getBlockZ(), this.andy.getFormattedHistory(), appendDuh, visualContext);
+            String prompt = AndyPrompt.getPromptForMood(this.andy.getMood(), this.andy.getWorldDay(), "players", this.andy.getBlockX(), this.andy.getBlockY(), this.andy.getBlockZ(), this.andy.getFormattedHistory(), appendDuh, visualContext);
 
             AIAgent.sendPromptAsync(prompt).thenAccept(response -> {
                 this.andy.level().getServer().execute(() -> {

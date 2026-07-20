@@ -1,0 +1,10 @@
+{
+  "andy_cave_sound": {
+    "category": "hostile",
+    "subtitle": "Andy Finding you",
+    "sounds": [
+      "andymod:audio/andy_cave_sound",
+      "andymod:audio/andy_cave_sound_2"
+    ]
+  }
+}

@@ -37,7 +37,17 @@ public class AndyChatListener {
                 double rand = andy.getRandom().nextDouble();
                 String appendDuh = (rand < 0.0005) ? " start your text response explicitly with the word 'duh'." : " do NOT use the word 'duh'.";
 
-                String prompt = AndyPrompt.getPromptForMood(andy.getMood(), playerName, andy.getBlockX(), andy.getBlockY(), andy.getBlockZ(), andy.getFormattedHistory(), appendDuh, null);
+                String prompt = AndyPrompt.getPromptForMood(
+                    andy.getMood(), 
+                    andy.getWorldDay(), 
+                    playerName, 
+                    andy.getBlockX(), 
+                    andy.getBlockY(), 
+                    andy.getBlockZ(), 
+                    andy.getFormattedHistory(), 
+                    appendDuh, 
+                    null
+                );
 
                 AIAgent.sendPromptAsync(prompt).thenAccept(response -> {
                     andy.level().getServer().execute(() -> {
