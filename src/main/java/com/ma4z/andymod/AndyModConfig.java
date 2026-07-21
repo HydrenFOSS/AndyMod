@@ -9,6 +9,7 @@ public class AndyModConfig {
     public static final ForgeConfigSpec.BooleanValue enabled;
     public static final ForgeConfigSpec.ConfigValue<String> provider;
     public static final ForgeConfigSpec.ConfigValue<String> apiKey;
+    public static final ForgeConfigSpec.ConfigValue<String> localUrl;
     public static final ForgeConfigSpec.ConfigValue<String> model;
     public static final ForgeConfigSpec.DoubleValue temperature;
     public static final ForgeConfigSpec.IntValue maxTokens;
@@ -19,6 +20,7 @@ public class AndyModConfig {
         enabled = BUILDER.define("enabled", true);
         provider = BUILDER.define("provider", "groq");
         apiKey = BUILDER.define("apiKey", "");
+        localUrl = BUILDER.define("localUrl", "");
         model = BUILDER.define("model", "llama-3.1-8b-instant");
         temperature = BUILDER.defineInRange("temperature", 0.7, 0.0, 2.0);
         maxTokens = BUILDER.defineInRange("maxTokens", 512, 1, 4096);

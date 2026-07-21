@@ -25,28 +25,43 @@ public class AIAgent {
         String apiKeyStr = AndyModConfig.apiKey.get();
         String modelStr = AndyModConfig.model.get();
 
-        if (apiKeyStr.isEmpty()) {
+        if (!providerType.equals("local") && apiKeyStr.isEmpty()) {
             return CompletableFuture.completedFuture("Error: API Key is empty in configuration.");
         }
 
         String endpoint;
-        String authHeaderValue;
+        String authHeaderName = null;
+        String authHeaderValue = null;
         String jsonPayload;
 
         switch (providerType) {
+            case "local":
+                String baseUrl = AndyModConfig.localUrl.get().trim();
+                if (baseUrl.isEmpty()) {
+                    return CompletableFuture.completedFuture("Error: localUrl is empty in configuration.");
+                }
+                if (baseUrl.endsWith("/")) {
+                    baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+                }
+                endpoint = baseUrl + "/api/v1/chat";
+                authHeaderName = "x-api-key";
+                authHeaderValue = apiKeyStr;
+                jsonPayload = buildLocalPayload(prompt);
+                break;
             case "openai":
                 endpoint = "https://api.openai.com/v1/chat/completions";
+                authHeaderName = "Authorization";
                 authHeaderValue = "Bearer " + apiKeyStr;
                 jsonPayload = buildOpenAICompatiblePayload(modelStr, prompt);
                 break;
             case "groq":
                 endpoint = "https://api.groq.com/openai/v1/chat/completions";
+                authHeaderName = "Authorization";
                 authHeaderValue = "Bearer " + apiKeyStr;
                 jsonPayload = buildOpenAICompatiblePayload(modelStr, prompt);
                 break;
             case "gemini":
                 endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + modelStr + ":generateContent?key=" + apiKeyStr;
-                authHeaderValue = null;
                 jsonPayload = buildGeminiPayload(prompt);
                 break;
             default:
@@ -58,8 +73,8 @@ public class AIAgent {
                 .header("Content-Type", "application/json")
                 .timeout(Duration.ofSeconds(AndyModConfig.timeout.get()));
 
-        if (authHeaderValue != null) {
-            requestBuilder.header("Authorization", authHeaderValue);
+        if (authHeaderName != null && authHeaderValue != null && !authHeaderValue.isEmpty()) {
+            requestBuilder.header(authHeaderName, authHeaderValue);
         }
 
         HttpRequest request = requestBuilder.POST(HttpRequest.BodyPublishers.ofString(jsonPayload)).build();
@@ -72,6 +87,12 @@ public class AIAgent {
                     return parseResponse(providerType, response.body());
                 })
                 .exceptionally(ex -> "Network/Timeout Exception occurred: " + ex.getMessage());
+    }
+
+    private static String buildLocalPayload(String prompt) {
+        JsonObject body = new JsonObject();
+        body.addProperty("prompt", prompt);
+        return gson.toJson(body);
     }
 
     private static String buildOpenAICompatiblePayload(String model, String prompt) {
@@ -113,6 +134,20 @@ public class AIAgent {
 
     private static String parseResponse(String provider, String jsonBody) {
         try {
+            if (provider.equals("local")) {
+                try {
+                    JsonObject root = gson.fromJson(jsonBody, JsonObject.class);
+                    if (root.has("response")) {
+                        return root.get("response").getAsString();
+                    } else if (root.has("reply")) {
+                        return root.get("reply").getAsString();
+                    } else if (root.has("text")) {
+                        return root.get("text").getAsString();
+                    }
+                } catch (Exception ignored) {}
+                return jsonBody;
+            }
+
             JsonObject root = gson.fromJson(jsonBody, JsonObject.class);
             if (provider.equals("openai") || provider.equals("groq")) {
                 return root.getAsJsonArray("choices")
