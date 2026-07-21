@@ -35,3 +35,9 @@ If you are playing on the client side, you must add your API key to your local c
 * **An Evolving Companion:** Andy starts as a helpful partner to accompany you on your adventures.
 * **The Corruption:** Watch the environment and Andy's behavior twist as time goes on.
 * **Dynamic AI Interactions:** Powered by LLMs to make Andy feel uniquely alive.
+
+---
+
+## Local
+
+* To use the local AI, please refer to the [AndyMod-LocalAI Repository](https://github.com/HydrenFOSS/AndyMod-LocalAI.git).
