@@ -6,5 +6,12 @@
       "andymod:audio/andy_cave_sound",
       "andymod:audio/andy_cave_sound_2"
     ]
+  },
+  "andy_neckwring_break": {
+    "category": "hostile",
+    "subtitle": "Neck Wringing",
+    "sounds": [
+      "andymod:audio/andy_neckwring_break"
+    ]
   }
 }

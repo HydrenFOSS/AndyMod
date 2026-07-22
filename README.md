@@ -12,7 +12,7 @@ To bring Andy into your world, you must build a specific ritual structure:
 2. Place **Torches** on the outer edges around the center block.
 3. Light a **Fire** directly in the dead center.
 
-> ⚠️ **Important:** Make sure to light the fire *last* to complete the summon.
+> ⚠️ **Important:** Make sure to light the fire at *last* to complete the summon.
 
 ---
 
@@ -28,6 +28,17 @@ If you are playing on the client side, you must add your API key to your local c
 2. Open `config/andymod-common.toml` in a text editor.
 3. Insert your key and provider details
 
+--- 
+
+### Following Providers are supported:
+
+1. groq (not grok)
+2. openai
+3. gemini
+4. local 
+
+* To use the local AI, please refer to the [AndyMod-LocalAI Repository](https://github.com/HydrenFOSS/AndyMod-LocalAI.git).
+
 ---
 
 ## Features
@@ -37,7 +48,3 @@ If you are playing on the client side, you must add your API key to your local c
 * **Dynamic AI Interactions:** Powered by LLMs to make Andy feel uniquely alive.
 
 ---
-
-## Local
-
-* To use the local AI, please refer to the [AndyMod-LocalAI Repository](https://github.com/HydrenFOSS/AndyMod-LocalAI.git).

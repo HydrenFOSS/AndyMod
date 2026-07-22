@@ -271,6 +271,19 @@ public class AndyEntity extends PathfinderMob implements GeoEntity {
 
             if (this.isWringing()) {
                 wringTimer++;
+
+                if (wringTimer == 1 && AndySounds.ANDY_NECK_WRING_BREAK.isPresent()) {
+                    this.level().playSound(
+                        null,
+                        this.getX(),
+                        this.getY(),
+                        this.getZ(),
+                        AndySounds.ANDY_NECK_WRING_BREAK.get(),
+                        SoundSource.HOSTILE,
+                        1.0F,
+                        1.0F
+                    );
+                }
                 
                 if (chaseTarget instanceof ServerPlayer serverPlayer && serverPlayer.isAlive()) {
                     this.getLookControl().setLookAt(serverPlayer, 30.0F, 30.0F);
