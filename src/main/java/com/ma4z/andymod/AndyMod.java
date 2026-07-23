@@ -1,5 +1,6 @@
 package com.ma4z.andymod;
 
+import com.ma4z.andymod.ai.VisualContext;
 import com.ma4z.andymod.config.AndyModConfig;
 import com.ma4z.andymod.network.ModMessages;
 import com.ma4z.andymod.sound.AndySounds;
@@ -38,6 +39,7 @@ public class AndyMod {
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             ModMessages.register();
+            VisualContext.init();
         });
     }
 

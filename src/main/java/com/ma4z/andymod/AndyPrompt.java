@@ -2,18 +2,6 @@ package com.ma4z.andymod;
 
 public class AndyPrompt {
 
-    /**
-     * Builds Andy's system prompt.
-     *
-     * @param mood           0-100, controls Andy's attitude toward the player right now
-     * @param day            in-world day count, controls the creeping horror undertone
-     * @param playerName     the player Andy is talking to
-     * @param x, y, z        Andy's coordinates - internal context only, NOT meant to be spoken directly unless asked
-     * @param history        recent dialogue log
-     * @param appendDuh      a random flavor condition injected into the prompt
-     * @param visualContext  what Andy currently "sees", nullable
-     * @return Formatted system prompt string for LLM inference
-     */
     public static String getPromptForMood(int mood, int day, String playerName, int x, int y, int z,
                                           String history, String appendDuh, String visualContext) {
 
@@ -50,12 +38,12 @@ public class AndyPrompt {
               .append("Recent Interaction History:\n")
               .append(history).append("\n\n")
               .append("CONVERSATIONAL PRIORITY RULES:\n")
-              .append("  1. IMMEDIATE INPUT FOCUS: Address ").append(playerName).append("'s most recent message directly.\n")
-              .append("  2. DIRECT QUESTIONS: If the player asks a question (e.g., 'where are you', 'what are you doing'), ")
-              .append("you MUST answer the question directly before adding flavor text.\n")
-              .append("  3. ANTI-REPETITION MANDATE: Inspect the history log above. NEVER repeat phrases, questions, ")
-              .append("or sentences you have already used in recent turns. Dynamically generate new phrasing every turn.\n")
-              .append("  4. TOPIC PROGRESSION: Do not force the same question back onto the player continuously.\n\n");
+              .append("  1. STRICT TASK & ITEM DIRECTIVE: If ").append(playerName).append(" asks you to find, locate, or spot a block/item (e.g., 'find cobblestone', 'where is lava'), scan [Notable Blocks] IMMEDIATELY. Tell them exact direction and distance (e.g., 'cobblestone is 2m west of me'). DO NOT talk about entities, slimes, or what you are standing on instead.\n")
+              .append("  2. STRICT NO-GREETING RULE: Do NOT say 'hey', 'hello', 'yo', or greeting prefixes unless ").append(playerName).append(" greeted you in their last message. You are already in an active conversation. Skip introductions and jump straight to the answer.\n")
+              .append("  3. QUESTION FOCUS: Prioritize answering ").append(playerName).append("'s message directly before adding any extra flavor text or observations.\n")
+              .append("  4. ANTI-REPETITION & ANTI-WBU MANDATE: NEVER ask 'wbu', 'what are u up to', or 'just chillin'. NEVER repeat phrases from the history log. Dynamically generate new responses every turn.\n")
+              .append("  5. TOPIC PROGRESSION: Do not loop back to previous entities or topics unless asked.\n\n");
+
         if (appendDuh != null && !appendDuh.isEmpty()) {
             prompt.append("[SUBCONSCIOUS FLAVOR CONDITION]\n")
                   .append("Active Subconscious Directive: ").append(appendDuh).append("\n")
@@ -66,15 +54,12 @@ public class AndyPrompt {
               .append("- Word Count Constraint: Keep total output under 15 words. Concise, rapid replies.\n")
               .append("- Casing Constraint: 100% lowercase text only. Zero capital letters permitted.\n")
               .append("- Punctuation Constraint: Omit ending periods. Use minimal punctuation suited for quick messaging.\n")
-              .append("- Style Profile: Informal, fast-paced texting (slang like 'rn', 'wbu', 'idk', 'tbh', 'bruh' allowed).\n")
+              .append("- Style Profile: Direct, fast-paced gamer messaging.\n")
               .append("- Naturality Guardrail: Avoid mechanical or synthetic response loops.");
 
         return prompt.toString();
     }
 
-    /**
-     * Maps the numeric mood scale (0-100) into detailed behavioral descriptions.
-     */
     private static String getMoodBlock(int mood) {
         if (mood >= 85) {
             return "Current Temperament (HYPED / ECSTATIC - " + mood + "/100):\n"
@@ -103,9 +88,6 @@ public class AndyPrompt {
         }
     }
 
-    /**
-     * Maps the in-world day count into creeping atmospheric horror guidelines.
-     */
     private static String getDayBlock(int day) {
         if (day <= 3) {
             return "Existential Atmosphere (DAY " + day + " - EARLY STAGE):\n"
